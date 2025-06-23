@@ -1,5 +1,5 @@
 <template>
-  <!-- Header igual al Home -->
+  <!-- Header -->
   <header>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
       <div class="container-fluid">
@@ -7,112 +7,108 @@
         <button class="btn btn-outline-light me-3" @click="goToHome">
           <i class="bi bi-arrow-left me-2"></i>Volver al Home
         </button>
-        
-        <!-- Título del Foro -->
-        
-        
-        <div></div> <!-- Espaciador -->
       </div>
     </nav>
   </header>
 
   <!-- Contenido del Post -->
-  <main class="container my-5">
+  <main class="container my-5" v-if="post">
     <div class="row justify-content-center">
       <div class="col-lg-8">
-        
         <!-- Tarjeta del Post -->
         <article class="card shadow-lg border-0">
-          
           <!-- Imagen del Post -->
-          <img 
-            src="https://via.placeholder.com/800x400" 
-            alt="Imagen del post"
+          <img
+            :src="post.urlFoto"
+            :alt="post.title"
             class="card-img-top post-image"
-          >
-          
+          />
+
           <!-- Contenido -->
           <div class="card-body p-4">
-            
             <!-- Metadata -->
             <div class="post-meta mb-3">
               <span class="badge bg-primary me-2">
-                <i class="bi bi-calendar3 me-1"></i>15 Jun 2025
+                <i class="bi bi-calendar3 me-1"></i>
+                {{ new Date(post.fecha).toLocaleDateString() }}
               </span>
               <span class="badge bg-secondary">
-                <i class="bi bi-person-circle me-1"></i>Dr. Ana García
+                <i class="bi bi-person-circle me-1"></i>
+                {{ post.usuario?.nombre }}
               </span>
             </div>
-            
+
             <!-- Título -->
             <h1 class="post-title text-primary mb-4">
-              Avances en Tecnología Cuántica
+              {{ post.title }}
             </h1>
-            
+
             <!-- Contenido del Post -->
             <div class="post-content">
               <p class="lead text-muted mb-4">
-                Los últimos desarrollos en computación cuántica prometen revolucionar la industria tecnológica en los próximos años.
+                {{ post.introduccion }}
               </p>
-              
+
               <p>
-                La computación cuántica representa uno de los avances más significativos en la historia de la tecnología moderna. A diferencia de los computadores tradicionales que utilizan bits binarios (0 y 1), los computadores cuánticos emplean qubits que pueden existir en múltiples estados simultáneamente.
-              </p>
-              
-              <h3 class="text-primary mt-4 mb-3">¿Qué hace especial a la computación cuántica?</h3>
-              <p>
-                La principal ventaja de la computación cuántica radica en su capacidad de procesamiento paralelo masivo. Mientras que un computador tradicional procesa información de forma secuencial, un computador cuántico puede realizar múltiples cálculos simultáneamente.
-              </p>
-              
-              <h3 class="text-primary mt-4 mb-3">Aplicaciones revolucionarias</h3>
-              <ul class="custom-list">
-                <li><strong>Criptografía:</strong> Capacidad de romper códigos de encriptación actuales en minutos</li>
-                <li><strong>Medicina:</strong> Simulación molecular para desarrollo de nuevos medicamentos</li>
-                <li><strong>Inteligencia Artificial:</strong> Aceleración exponencial del machine learning</li>
-                <li><strong>Logística:</strong> Optimización de rutas y cadenas de suministro complejas</li>
-              </ul>
-              
-              <p>
-                Empresas como IBM, Google y Microsoft están invirtiendo miles de millones en esta tecnología, prediciendo que en la próxima década veremos aplicaciones comerciales viables que cambiarán fundamentalmente nuestra relación con la tecnología.
+                {{ post.descripcion }}
               </p>
             </div>
-            
+
             <!-- Info del Autor -->
-            <hr class="my-4">
+            <hr class="my-4" />
             <div class="author-info p-3 bg-light rounded">
               <div class="d-flex align-items-center">
                 <i class="bi bi-person-circle text-primary me-3" style="font-size: 3rem;"></i>
                 <div>
-                  <h5 class="mb-1 text-primary">Dr. Ana García</h5>
-                  <p class="mb-0 text-muted">Física especializada en mecánica cuántica, investigadora en el Instituto de Tecnología Avanzada.</p>
+                  <h5 class="mb-1 text-primary">{{ post.usuario?.nombre }}</h5>
+                  <p class="mb-0 text-muted">{{ post.usuario?.correo }}</p>
                 </div>
               </div>
             </div>
-            
           </div>
         </article>
-        
       </div>
     </div>
   </main>
+
+  <!-- Fallback si no hay datos -->
+  <div v-else class="text-center my-5">
+    <i class="bi bi-exclamation-circle-fill text-danger" style="font-size: 3rem;"></i>
+    <h3 class="text-danger mt-3">No se encontraron datos del post.</h3>
+  </div>
 </template>
 
-<script>
-import { useRouter } from 'vue-router';
 
+<script>
 export default {
   name: 'PostDetail',
-  setup() {
-    const router = useRouter();
-    
-    const goToHome = () => {
-      router.push('/');
-    };
-    
+  props: ['id'], // Recibe el ID como prop del router
+  data() {
     return {
-      goToHome
-    };
+      post: {}
+    }
+  },
+  methods: {
+    goToHome() {
+      this.$router.push('/');
+    }
+  },
+  // ...existing code...
+  mounted() {
+    // Obtener los datos del post desde sessionStorage
+    const storedPost = sessionStorage.getItem('currentPost');
+    if (storedPost) {
+      this.post = JSON.parse(storedPost);
+      console.log('Post recibido:', this.post);
+      // Limpiar el sessionStorage después de usarlo
+      sessionStorage.removeItem('currentPost');
+    } else {
+      console.log('No se encontraron datos del post, redirigiendo al home...');
+      // Redirigir al home si no hay datos
+      this.$router.push('/');
+    }
   }
+  // ...existing code...
 };
 </script>
 
@@ -178,11 +174,11 @@ export default {
   .post-title {
     font-size: 1.8rem;
   }
-  
+
   .post-image {
     height: 200px;
   }
-  
+
   .post-content {
     font-size: 1rem;
   }

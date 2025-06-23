@@ -18,11 +18,14 @@ const routes = [
     component: () => import('../views/Admin.vue'),
     meta: { requiresAuth: true } // Para proteger la ruta
   },
-  {
-    path: '/post',
-    name: 'PostDetail',
-    component: () => import('../views/PostDetail.vue')
-  },
+   // ...existing code...
+    {
+      path: '/post/:id',
+      name: 'PostDetail',
+      component: () => import('../views/PostDetail.vue'),
+      props: true // Esto permite pasar el id como prop
+    },
+  // ...existing code...
 ]
 
 const router = createRouter({

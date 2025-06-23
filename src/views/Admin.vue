@@ -61,33 +61,72 @@
       <!-- Modal para agregar nueva palabra -->
       <div ref="modal" class="modal fade" id="newWordModal" tabindex="-1" aria-labelledby="newWordModalLabel"
         aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
           <div class="modal-content">
             <div class="modal-header">
-              <h5 class="modal-title" id="newWordModalLabel"><span>{{ isEditing ? 'Editar palabra' : 'Crear palabra'
-                  }}</span></h5>
+              <h5 class="modal-title" id="newWordModalLabel"><span>{{ isEditing ? 'Editar Post' : 'Crear Post'
+              }}</span></h5>
               <button type="button" :disabled="isLoading" class="btn-close" data-bs-dismiss="modal"
                 aria-label="Close"></button>
             </div>
             <div class="modal-body">
-              <form @submit.prevent="wordSubmit">
-                <div class="mb-3">
-                  <label for="word" class="form-label">Palabra</label>
-                  <input type="text" class="form-control" id="word" v-model="form.word" required :disabled="isLoading">
+              <form @submit.prevent="submitPost">
+                <div class="row">
+                  <!-- Columna izquierda -->
+                  <div class="col-md-6">
+                    <div class="mb-3">
+                      <label class="form-label">Título</label>
+                      <input type="text" class="form-control" v-model="form.title" required :disabled="isLoading">
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Introducción</label>
+                      <textarea class="form-control" v-model="form.introduccion" required :disabled="isLoading"
+                        maxlength="150" rows="3" placeholder="Máximo 150 caracteres"></textarea>
+                      <div class="form-text d-flex justify-content-between">
+                        <small class="text-muted">Breve descripción del post</small>
+                        <small :class="form.introduccion.length >= 150 ? 'text-danger' : 'text-muted'">
+                          {{ form.introduccion.length }}/150
+                        </small>
+                      </div>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Fecha</label>
+                      <input type="date" class="form-control" v-model="form.fecha" required :disabled="isLoading">
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Estatus</label>
+                      <select class="form-select" v-model="form.status" required :disabled="isLoading">
+                        <option value="ACTIVO">Activo</option>
+                        <option value="DESACTIVO">Inactivo</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Columna derecha -->
+                  <div class="col-md-6">
+                    <div class="mb-3">
+                      <label class="form-label">URL de Imagen</label>
+                      <input type="url" class="form-control" v-model="form.urlFoto" required :disabled="isLoading">
+                    </div>
+                    <div class="mb-3 text-center">
+                      <img v-if="form.urlFoto" :src="form.urlFoto" alt="Previsualización" class="img-preview rounded"
+                        @error="form.urlFoto = ''" />
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Descripción</label>
+                      <textarea class="form-control" v-model="form.descripcion" rows="6" required
+                        :disabled="isLoading"></textarea>
+                    </div>
+                  </div>
                 </div>
-                <div class="mb-3">
-                  <label for="difficulty" class="form-label">Dificultad</label>
-                  <select class="form-select" id="difficulty" v-model="form.difficulty" required :disabled="isLoading">
-                    <option value="FACIL">Fácil</option>
-                    <option value="MEDIO">Media</option>
-                    <option value="DIFICIL">Difícil</option>
-                  </select>
-                </div>
+
                 <div class="modal-footer">
                   <button type="button" class="btn btn-cancel" data-bs-dismiss="modal"
                     :disabled="isLoading">Cancelar</button>
-                  <button type="submit" class="btn btn-add" :disabled="isLoading"><span>{{ isEditing ? 'Editar' :
-                      'Guardar' }}</span></button>
+                  <button type="submit" class="btn btn-primary btn-add"
+                    :disabled="isLoading || !form.title || !form.introduccion || !form.descripcion || !form.urlFoto || !form.fecha">
+                    {{ isEditing ? 'Editar' : 'Guardar' }}
+                  </button>
                 </div>
               </form>
             </div>
@@ -122,9 +161,14 @@ export default {
       loadingTable: false,
       form: {
         id: null,
-        word: '',
-        difficulty: 'FACIL'
+        title: '',
+        introduccion: '',
+        descripcion: '',
+        urlFoto: '',
+        status: 'ACTIVO',
+        fecha: new Date().toISOString().split('T')[0] // yyyy-mm-dd
       },
+
       localeText: {
         errorTabla: false,
         sinInformacion: '',
@@ -133,42 +177,60 @@ export default {
         noRowsToShow: 'No hay datos para mostrar'
       },
       columnDefs: [
-        { headerName: "ID", field: "id", sortable: true, filter: false, width: 100 },
-        { headerName: "Palabra", field: "word", sortable: true, filter: false, flex: 1 },
+        { headerName: "ID", field: "id", sortable: true, filter: true, width: 80 },
+        { headerName: "Título", field: "title", sortable: true, filter: true, flex: 1 },
+        { headerName: "Introducción", field: "introduccion", sortable: false, flex: 2 },
+        { headerName: "Descripción", field: "descripcion", sortable: false, flex: 2 },
         {
-          headerName: "Dificultad",
-          field: "difficulty",
-          sortable: true,
-          filter: false,
-          width: 150,
+          headerName: "Autor",
+          field: "usuario.nombre",
+          flex: 1,
+          valueGetter: params => params.data.usuario?.nombre || "Sin autor",
+        },
+        {
+          headerName: "Fecha",
+          field: "fecha",
+          valueFormatter: params => new Date(params.value).toLocaleDateString(),
+          width: 130
+        },
+        {
+          headerName: "Estatus",
+          field: "status",
+          width: 140,
           cellRenderer: params => {
-            let bgColor = '';
+            const status = params.value || 'DESCONOCIDO';
+            let bgColor = '#D9D9D9';
             let textColor = 'black';
 
-            switch (params.value) {
-              case 'FACIL':
-                bgColor = '#9BC53D'; // Verde
+            switch (status.toUpperCase()) {
+              case 'ACTIVO':
+                bgColor = '#9BC53D';
                 break;
-              case 'MEDIO':
-                bgColor = '#FDE74C'; // Amarillo
+              case 'INACTIVO':
+                bgColor = '#FDE74C';
                 break;
-              case 'DIFICIL':
-                bgColor = '#E55934'; // Rojo
-                textColor = 'white';
-                break;
-              default:
-                bgColor = '#D9D9D9'; // Gris por defecto
             }
 
-            return `<div style="background-color: ${bgColor}; color: ${textColor}; padding: 5px 10px; border-radius: 16px; text-align: center; width: fit-content;">
-                      ${params.value}
-                    </div>`;
+            return `
+        <div style="
+          background-color: ${bgColor};
+          color: ${textColor};
+          padding: 6px 12px;
+          border-radius: 16px;
+          text-align: center;
+          font-weight: bold;
+          width: fit-content;
+          margin: auto;
+        ">
+          ${status}
+        </div>
+      `;
           }
         },
         {
           headerName: 'Acciones',
           field: 'acciones',
-          width: 35,
+          width: 60,
           pinned: 'right',
           cellRenderer: function (params) {
             const button = document.createElement('button');
@@ -197,7 +259,7 @@ export default {
                   confirmButtonText: 'Sí, continuar',
                 });
                 if (result.isConfirmed) {
-                  await vueComponentInstance.editWord(clave);
+                  await vueComponentInstance.editPost(clave);
                 }
               } catch (error) {
                 Swal.fire({
@@ -227,23 +289,36 @@ export default {
     goToHome() {
       this.$router.push('/');
     },
-    
-    isValidWord(word) {
-      const regex = /^[a-zA-ZñÑáéíóúÁÉÍÓÚ]+$/;
-      return regex.test(word);
-    },
+
     showModal(editando) {
       if (!editando) {
         this.isEditing = false;
-        this.form.id = null;
-        this.form.word = '';
-        this.form.difficulty = 'FACIL';
+        this.form = {
+          id: null,
+          title: '',
+          introduccion: '',
+          descripcion: '',
+          urlFoto: '',
+          status: 'ACTIVO',
+          fecha: this.getTodayDate()
+        };
       }
       this.modal.show();
     },
+
+    getTodayDate() {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    },
+
     closeModal() {
       this.modal.hide();
+      document.body.style.paddingRight = '0px';
     },
+
     onQuickFilterChanged() {
       this.gridApi.setQuickFilter(this.quickFilterText);
     },
@@ -262,7 +337,7 @@ export default {
       // Limpiar datos de sesión
       sessionStorage.removeItem('authToken');
       sessionStorage.removeItem('authUser');
-      
+
       // Mostrar mensaje de confirmación
       Swal.fire({
         icon: 'success',
@@ -272,31 +347,20 @@ export default {
         timer: 1500,
         showConfirmButton: false
       });
-      
+
       // Redirigir al home
       setTimeout(() => {
         this.$router.push('/');
       }, 1500);
     },
 
-    async wordSubmit() {
+    async submitPost() {
       this.isLoading = true;
       try {
 
-        if (!this.isValidWord(this.form.word)) {
-          Swal.fire({
-            icon: 'warning',
-            title: 'Palabra inválida',
-            text: 'Solo se permiten letras sin espacios ni caracteres especiales.',
-            confirmButtonColor: '#E55934',
-          });
-          this.isLoading = false;
-          return;
-        }
+        let response = this.isEditing ? await this.updatePost(this.form.id) : await this.createPost();
 
-        let response = this.isEditing ? await this.updateWord(this.form.id) : await this.createWord();
-
-        await this.loadWorks();
+        await this.loadPost();
         this.closeModal();
         Swal.fire({
           icon: 'success',
@@ -319,13 +383,17 @@ export default {
       }
     },
 
-    async createWord() {
+    async createPost() {
       const token = sessionStorage.getItem('authToken');
       const response = await axios.post(
-        `${import.meta.env.VITE_API_WORD_2}/register`,
+        `${import.meta.env.VITE_API_ART}article/register`,
         {
-          word: this.form.word,
-          difficulty: this.form.difficulty,
+          title: this.form.title,
+          introduction: this.form.introduccion,
+          description: this.form.descripcion,
+          imagePath: this.form.urlFoto,
+          date: this.form.fecha,
+          status: this.form.status
         },
         {
           headers: {
@@ -334,20 +402,24 @@ export default {
         }
       );
       if (response.status !== 200) {
-        const errorMessage = error.response?.data?.error || '¡Error al crear la palabra!';
+        const errorMessage = error.response?.data?.error || '¡Error al crear el post!';
         throw new Error(errorMessage);
       }
 
-      return "¡Palabra creada correctamente!";
+      return 'Artículo registrado correctamente.';
     },
 
-    async updateWord(id) {
+    async updatePost(id) {
       const token = sessionStorage.getItem('authToken');
       const response = await axios.put(
-        `${import.meta.env.VITE_API_WORD_2}/${id}`,
+        `${import.meta.env.VITE_API_ART}article/update-article/${id}`,
         {
-          word: this.form.word,
-          difficulty: this.form.difficulty,
+          titulo: this.form.title,
+          introduccion: this.form.introduccion,
+          descripcion: this.form.descripcion,
+          urlFoto: this.form.urlFoto,
+          fecha: this.form.fecha,
+          status: this.form.status
         },
         {
           headers: {
@@ -359,39 +431,40 @@ export default {
         const errorMessage = error.response?.data?.error || '¡Error al crear la palabra!';
         throw new Error(errorMessage);
       }
-
       return "¡Palabra actualizada correctamente!";
     },
 
-    async editWord(clave) {
-      this.isLoading = true;
-      const token = sessionStorage.getItem('authToken');
-      const response = await axios.get(`${import.meta.env.VITE_API_WORD_2}/${clave}`, {
-        params: { clave: clave },
-        headers: {
-          Authorization: `Bearer ${token}`,
-        }
-      });
-
-      if (response.status === 200) {
-        this.form.id = response.data.id;
-        this.form.word = response.data.word;
-        this.form.difficulty = response.data.difficulty;
-        this.isEditing = true;
-        this.modal.show();
-      } else {
-        const errorMessage = error.response?.data?.error || '¡Error al recuperar la palabra!';
-        throw new Error(errorMessage);
+    async editPost(id) {
+      const post = this.rowData.find(p => p.id === id);
+      if (!post) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'No se encontró el post en la tabla.',
+        });
+        return;
       }
+
+      // Llenar el formulario
+      this.form.id = post.id;
+      this.form.title = post.title;
+      this.form.introduccion = post.introduccion;
+      this.form.descripcion = post.descripcion;
+      this.form.urlFoto = post.urlFoto || post.imagePath || '';
+      this.form.fecha = post.fecha?.split('T')[0]; // formato yyyy-mm-dd
+      this.form.status = post.status || 'ACTIVO';
+
+      this.isEditing = true;
+      this.modal.show();
     },
 
-    async loadWorks() {
+    async loadPost() {
       try {
         this.loadingTable = true;
         const token = sessionStorage.getItem('authToken');
 
         const response = await axios.get(
-          `${import.meta.env.VITE_API_WORD_2}`,
+          `${import.meta.env.VITE_API_ART}article/get-articles-by-user`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -419,13 +492,26 @@ export default {
     // const increment = 100 / steps;
     //await this.getListaMonedasTabla();
     // this.progress += increment;
-    await this.loadWorks();
+    await this.loadPost();
     // this.progress += increment;
     // this.loading = false;
     this.modal = new Modal(this.$refs.modal, {
       backdrop: 'static',
       keyboard: false
     });
+
+    const observer = new MutationObserver(() => {
+      document.body.style.paddingRight = '0px';
+    });
+
+    // Observa cambios en el estilo del body
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['style']
+    });
+
+    // Guarda el observer si luego quieres desconectarlo (opcional)
+    this.modalObserver = observer;
   },
 };
 </script>
@@ -468,13 +554,15 @@ export default {
   transition: all 0.3s ease;
 }
 
-.btn-color{
+.btn-color {
   background-color: #9BC53D;
 }
-.btn-color2{
+
+.btn-color2 {
   background-color: #0056b3;
 }
-.btn-color3{
+
+.btn-color3 {
   background-color: #c53d3d;
 }
 
@@ -597,5 +685,12 @@ export default {
 .btn-back:hover {
   background-color: #c82333;
   transform: translateY(-2px);
+}
+
+.img-preview {
+  max-width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 </style>
